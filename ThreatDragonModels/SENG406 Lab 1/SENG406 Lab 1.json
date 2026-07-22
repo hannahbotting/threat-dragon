@@ -1,32 +1,1053 @@
 {
-  "version": "2.6.2",
+  "version": "2.4.1",
   "summary": {
-    "title": "SENG406 Lab 1",
-    "owner": "",
-    "description": "",
+    "title": "Uber Eats Threat Model (partial)",
+    "owner": "Fabian Gilson",
+    "description": "# Description\n\nIn SENG406, we use the uber eats app (breaking some (tm) here ^o^ ) as a running example to illustrate how threat modelling works. To keep this example simple, we only consider a web app, so not a mobile app that would connect to a remote server.\n\nIMPORTANT NOTE: This model is incomplete, i.e. all STRIDE are not fully described, counter-measures are missing, as well as some flows. It remains small enough to be looked at and expanded by students during the tutorial.\n\nThe web app, as we define it, exposes the following (simplified) features:\n  * individuals can register to the app\n  * registered users belong to one of the following types: \"private user\" (aka end-user), \"restaurant representative\" (aka restaurant) and \"delivery driver\" (aka driver). \n  * all types of registered users can log into the app; they will have access to a separate subsystem of the app, depending on their type.\n  * end-users order food\n  * restaurants prepare food\n  * drivers deliver food prepared by restaurants to end-users\n\nEnd-user web app\n  * retains private details, i.e. contact details, address, and bank / PayPal account\n  * order food to restaurants\n  * review restaurants\n  * pay via app\n  * can tip, and review driver\n\nRestaurant web app (not modelled)\n  * retains bank account, and business details\n  * food safety information on menu items (e.g., allergen)\n  * negotiated margin, and service fee (private to a restaurant)\n  * receive orders from end-users\n  * authenticate, match driver and ordered food\n\nDriver app (partially modelled)\n  * receive delivery requests\n  * can combine multiple orders from same restaurant\n  * send ETA to users and display GPS-located route, unless driver is delivering another end-user\n  * can communicate to the end-users with short messages\n\n# Actors\n\n1. End-users: these are the users that order food on the uber eats app. They can register, browse restaurants and menu, and order food to be delivered at their home address, or another supplied address. They are identified by their name, email address, and physical addresses.\n2. Restaurants: these are the owners of the restaurants that are registered in the app, and cook meals for end users. They are identified by their business names, an email address, and the restaurant's address.\n3. Drivers: these are the delivery persons, collecting orders from restaurant to deliver to the end-users. They are identified by a physical badge, with a photo.\n\n# External Dependencies\n\n1. All web pages must be mobile-friendly.\n2. All web pages rely on a cloud database hosted on AWS or similar, offering secured access to the database via secured APIs over TLS.\n3. The GPS positioning used by the Driver's app relies on the device's GPS functionality and library.\n\n# Trust levels (privileges):\n\n  0. Anonymous user\n  1. user with invalid credentials\n  2. registered user (i.e. end-, restaurant, driver user) not logged in\n  3. registered end-user and logged in\n  4. registered restaurant and logged in\n  5. registered driver and logged in\n  6. cloud web app process\n  7. cloud database process\n  8. system administrator\n\n# Entry points\n\nNote that we only list some of the end-user's entry points. We leave you as an exercise to identify the remaining entry points for the end-users, the restaurants and the drivers. Unlike the Thread Modelling page from OWASP, we group the page and the function under the same item, but list both trust levels, for simplicity. You can apply the same rule for your assignment.\n\n1. HTTPS port\n - Description: the apps communicate with the remote cloud database using a secured channel (over TLS).\n - Trust level: 0, 1, 2, 3, 4, 5\n2. Login page\n - Description: the login page of the mobile apps, where users can input their credentials.\n - Trust level: 0, 1, 2, 7\n3. Main page of user app\n - Description: Page showing a list of restaurants the user can order food from\n - Trust level: 3, 7\n4. Ordering food page\n - Description: Page allowing to order food from a menu\n - Trust level: 3, 7\n5. SSH port\n  - Remote access port for server maintenance\n  - Trust level: 8\n\n# Exit points\n\nNote that we only list some of the end-user's exit points. We leave you as an exercise to identify the remaining entry points.\nHint: think about what should and should not be displayed on such exit points, such that there is no information disclosure, for example.\n\n1. Error page for unknown / wrong login\n - Description: An error page displaying a message telling the users that the credentials supplied are erroneous.\n - Trust level: 1\n2. Menu display\n - Description: Display a menu from a restaurant\n - Trust level: 3 \n3. Order confirmation screen\n - Description: Confirmation page when food has been ordered showing an estimate time arrival\n - Trust level: 3\n4. Address details for order\n - Description: Location details of delivery sent to the driver app.\n - Trust level: 3, 5, 6\n\n# Assets\n\nSimilar to above, we only list part of the assets here, more are expected, left for you to expand. Think about the PII of drivers and how their GPS coordinates are shared too.\n\n1. End-users\n  1.1. End-user credentials\n    - Description: credentials of end-users used to log into the end-user app, i.e. email and password, hosted on the cloud server.\n    - Trust level: 3, 6, 7, 8\n  1.2. End-user personal data\n    - Description: full name, post address, payment details, email address, phone number\n    - Trust level: 3, 6, 7, 8\n2. End-user web app\n  2.1. Availability\n    - Description: The web app should be available at all time, accessible by end-users.\n    - Trust level: 6\n  2.2. Ability to execute read/write database, e.g., create users, access menus\n    - The app must be able to read/write/update data from the database\n    - Trust level: 7\n  2.3. Auditability\n    - The app must be auditable through logs and service status enquiries.\n    - Trust level: 8\n3. Host system (cloud infrastructure)\n  3.1. Availability\n    - The system must be available at all time, directly accessible by system admins only.\n    - Trust level: 8\n  3.2. Ability to run the web server\n    - The system must allow the deployment and access to the web server (web app).\n    - Trust level: 6, 8\n  3.3. Auditability\n    - The system must be auditable through logs and system statistics monitoring.\n    - Trust level: 8  \n\n# Diagrams\n\nLook into the diagram below for a partial example. Note that there is one issue with current design (hint: check the alignment between the trust levels and the actors depicted in the diagram, something should stood out).\n\nYour tasks:\n  1. Look at the assets, and update the list with the missing server assets (hint: read 3.2 carefully, there is a related asset that needs to be protected). \n  2. Look at the different threats recorded. Some may need to be updated, augmented, or replicated on other processes.\n  3. update the diagram so that the registration / login features are depicted correctly.\n  4. there is mention of 2FA and some registration / verification process for the drivers in the mitigations, but the diagram does not depict that process. Update the diagram to reflect that.\n  5. How can you make the prevention of spoofing of actors (stolen / guessed credentials) stronger? Think about using encryption to mitigate the impact of exfiltrated data, and discuss with your classmates options like geolocation tracing, and device fingerprinting.\n  6. Think about the logging and alerting systems that are mentioned irregularly on some diagram elements. Update the model to make these security features consistent.\n\nWhen updating the actors, think how trust levels can be used to simplify the design (i.e. avoid repeating some STRIDE on different actors) if you correctly consider preconditions, e.g., if ordering food can only be accessed by an actor with trust level 3.",
     "id": 0
   },
   "detail": {
     "contributors": [],
     "diagrams": [
       {
-        "id": 1,
-        "title": "SENG406 Lab 1",
+        "id": 0,
+        "title": "New STRIDE diagram",
         "diagramType": "STRIDE",
         "placeholder": "New STRIDE diagram description",
         "thumbnail": "./public/content/images/thumbnail.stride.jpg",
-        "version": "2.6.2",
+        "version": "2.4.1",
         "cells": [
           {
             "position": {
-              "x": 350,
-              "y": 190
+              "x": 110,
+              "y": 80
             },
             "size": {
-              "width": 112.5,
+              "width": 110,
+              "height": 70
+            },
+            "attrs": {
+              "text": {
+                "text": "end-user"
+              },
+              "body": {
+                "stroke": "red",
+                "strokeWidth": 2.5,
+                "strokeDasharray": null
+              }
+            },
+            "visible": true,
+            "shape": "actor",
+            "zIndex": 1,
+            "ports": {
+              "groups": {
+                "top": {
+                  "position": "top",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "position": "right",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "bottom": {
+                  "position": "bottom",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "left": {
+                  "position": "left",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                }
+              },
+              "items": [
+                {
+                  "group": "top",
+                  "id": "d7be6d6d-d2cb-49ed-a6c6-149867d8371c"
+                },
+                {
+                  "group": "right",
+                  "id": "39b5297e-6a5d-44c1-a2c6-87f274a3c1c6"
+                },
+                {
+                  "group": "bottom",
+                  "id": "c02b0f91-c76e-43cb-8ae7-514e331a4354"
+                },
+                {
+                  "group": "left",
+                  "id": "ba1b5493-0a35-45c6-a0c6-a417b91049c6"
+                }
+              ]
+            },
+            "id": "00c473a5-dde0-41fe-8e56-967bba7b1687",
+            "data": {
+              "type": "tm.Actor",
+              "name": "end-user",
+              "description": "An end-user is a customer that will access the app to order food to be delivered at their home.",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": true,
+              "providesAuthentication": false,
+              "threats": [
+                {
+                  "id": "d60de45a-424f-4849-81b5-46b9c9069222",
+                  "title": "Weak credentials",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Spoofing",
+                  "description": "Credentials can be guessed if they are too weak.",
+                  "mitigation": "* Enforce strong password rules such as 10 characters and at least one of capital letter, number, special character, or pass-phrases.\n* Enforce two factor authentication.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 1,
+                  "score": ""
+                },
+                {
+                  "id": "aefbb620-ad0e-421d-bfe7-dd181998ae34",
+                  "title": "Repudiation of order",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Repudiation",
+                  "description": "Customer denies passing the order",
+                  "mitigation": "* Use unique session ID (high entropy).\n* http-only and secure cookies over HTTPS.\n* Trace user actions with user ID in secured and auditable logs, ensuring no sensitive PII data other than the user ID are logged.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 2,
+                  "score": ""
+                },
+                {
+                  "id": "fa503391-6083-4916-b919-2d5bd7833d3e",
+                  "title": "Order is repeated by bad actor",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Spoofing",
+                  "description": "A bad actor could reuse an existing order request, or session ID to repeat an order.",
+                  "mitigation": "* Use unique session ID.\n* Pass session ID securely in htt-only (secure-cookie flag-enabled) cookies.\n* Keep a record of orders and flag potential duplicates to ask human confirmation.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 25,
+                  "score": ""
+                },
+                {
+                  "id": "60bcb088-c190-4fe6-ad59-73743f5bfa18",
+                  "title": "User don't own email address",
+                  "status": "Open",
+                  "severity": "TBD",
+                  "type": "Repudiation",
+                  "description": "The user registers with an email they don't own.",
+                  "mitigation": "No mitigations currently.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 60,
+                  "score": ""
+                },
+                {
+                  "id": "7ec26a1a-0a40-438b-b887-690a76e8a099",
+                  "title": "Place order for someone else",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Spoofing",
+                  "description": "A logged-in user place an order pretending to be someone else, so they don't have to pay for the order, for example.",
+                  "mitigation": "- Apply server-side authorisation, i.e. ensure the ordering customer ID cannot be forged and is validated server-side with session token.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 63,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "spoofing": 6,
+                "repudiation": 4
+              }
+            },
+            "tools": {
+              "items": [
+                "boundary",
+                "button-remove"
+              ],
+              "name": null
+            }
+          },
+          {
+            "position": {
+              "x": 412,
+              "y": 40.00000000000003
+            },
+            "size": {
+              "width": 80,
+              "height": 80
+            },
+            "attrs": {
+              "text": {
+                "text": "register"
+              },
+              "body": {
+                "stroke": "red",
+                "strokeWidth": 2.5,
+                "strokeDasharray": null
+              }
+            },
+            "visible": true,
+            "shape": "process",
+            "zIndex": 2,
+            "ports": {
+              "groups": {
+                "top": {
+                  "position": "top",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "position": "right",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "bottom": {
+                  "position": "bottom",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "left": {
+                  "position": "left",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                }
+              },
+              "items": [
+                {
+                  "group": "top",
+                  "id": "4abc8749-2a6c-433d-af3f-e6ade0b3aefb"
+                },
+                {
+                  "group": "right",
+                  "id": "2d878004-5e9a-4646-bb09-fda07dfcc877"
+                },
+                {
+                  "group": "bottom",
+                  "id": "23e19224-afed-43d4-9bc4-7a404fef19d9"
+                },
+                {
+                  "group": "left",
+                  "id": "f455188c-84c5-45ea-8d8f-ea9b4fa780d8"
+                }
+              ]
+            },
+            "id": "0713e26f-9476-45b2-b4cf-63ea2e032192",
+            "data": {
+              "type": "tm.Process",
+              "name": "register",
+              "description": "Action to register a user account to the uber eats app",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": true,
+              "handlesCardPayment": false,
+              "handlesGoodsOrServices": false,
+              "isWebApplication": false,
+              "privilegeLevel": "",
+              "threats": [
+                {
+                  "id": "c554d5a2-f8dc-41d0-a7f9-4ea851c1e570",
+                  "title": "Denial of Service",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Denial of service",
+                  "description": "The service is overloaded with registration requests",
+                  "mitigation": "* Implement captcha-like feature, or cloudfare.\n* Log originating IP and apply IP blocking when abused (e.g., firewall).",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 5,
+                  "score": ""
+                },
+                {
+                  "id": "203d0fa8-aa79-4869-a9fc-c49ea3507246",
+                  "title": "Registration process replaced by scammer",
+                  "status": "Open",
+                  "severity": "TBD",
+                  "type": "Spoofing",
+                  "description": "The official registration page has been replaced by another malicious page users are redirected to from scam emails, or text messages, or links posted online.",
+                  "mitigation": "* Buy similar domain names with typos, e.g., ubreats.com.\n",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 6,
+                  "score": ""
+                },
+                {
+                  "id": "d778b8e9-fa70-45d9-a3a8-9d93e2708956",
+                  "title": "Registration process leaks data",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "Process logs sensitive data, or stores data in unsafe (e.g., shared) memory",
+                  "mitigation": "* Use type-safe and memory-safe programming language.\n* Audit log entries for sensitive data.\n* Monitor process usages and in/out for suspicious activity.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 7,
+                  "score": ""
+                },
+                {
+                  "id": "288bddfd-cd59-4c8f-b6f5-ef699a12d792",
+                  "title": "Process has been tampered with",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "The process has been altered by an external malicious actor.",
+                  "mitigation": "* Monitor and keep a record of process ID to identify process restart.\n* Add fingerprinting to process, e.g., change time, binary / script hash.\n* Monitor process in/out for suspicious activities.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 8,
+                  "score": ""
+                },
+                {
+                  "id": "c8855611-50f0-4d6d-af61-485f904005bb",
+                  "title": "Process gets access to restricted resources",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Elevation of privilege",
+                  "description": "Process runs at a higher priority level (e.g., permissions, resources), or accesses to assets outside its permission level.",
+                  "mitigation": "* Apply least privilege principle for process and used resources.\n* Run process with as few permissions as required, using a technical user with no interactive and logon permissions.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 9,
+                  "score": ""
+                },
+                {
+                  "id": "e2f49ddf-a40c-4f4d-a088-edf5811cb708",
+                  "title": "Injection attack - tampering",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "Malicious data is passed to the process to cause harm to the underlying database, e.g., override data or inject malicious data.",
+                  "mitigation": "* Sanitise input for script-like requests, e.g., javascript, SQL, etc.\n* Enforce strict CSP policy to prevent harmful scripts to be transmitted (e.g., js, py, sh files).",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 29,
+                  "score": ""
+                },
+                {
+                  "id": "083714a1-3973-4901-8f4d-773c2eb88bf0",
+                  "title": "Injection attack - disclosure",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "Malicious data is passed to the process to gain access to or exfiltrate data stored in database.",
+                  "mitigation": "* Sanitise input from script-like statements, e.g., javascript, SQL, etc.\n* Enforce strict CSP policy to prevent harmful scripts to be transmitted (e.g., js, py, sh files).",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 30,
+                  "score": ""
+                },
+                {
+                  "id": "02992330-fe14-4d6d-83c2-991075a500f9",
+                  "title": "Expose sensitive data in logs",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "Logs may leak sensitive data, when tracing user actions.",
+                  "mitigation": "- Ensure that all sensitive PII data other than user ID are not logged.\n- Conduct regular log audits.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 62,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "spoofing": 1,
+                "tampering": 6,
+                "repudiation": 0,
+                "informationDisclosure": 7,
+                "denialOfService": 3,
+                "elevationOfPrivilege": 2
+              }
+            },
+            "tools": {
+              "items": [
+                "boundary",
+                "button-remove"
+              ],
+              "name": null
+            }
+          },
+          {
+            "position": {
+              "x": 407,
+              "y": 150
+            },
+            "size": {
+              "width": 90,
+              "height": 80
+            },
+            "attrs": {
+              "text": {
+                "text": "order food"
+              },
+              "body": {
+                "stroke": "red",
+                "strokeWidth": 2.5,
+                "strokeDasharray": null
+              }
+            },
+            "visible": true,
+            "shape": "process",
+            "zIndex": 3,
+            "ports": {
+              "groups": {
+                "top": {
+                  "position": "top",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "position": "right",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "bottom": {
+                  "position": "bottom",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "left": {
+                  "position": "left",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                }
+              },
+              "items": [
+                {
+                  "group": "top",
+                  "id": "4abc8749-2a6c-433d-af3f-e6ade0b3aefb"
+                },
+                {
+                  "group": "right",
+                  "id": "2d878004-5e9a-4646-bb09-fda07dfcc877"
+                },
+                {
+                  "group": "bottom",
+                  "id": "23e19224-afed-43d4-9bc4-7a404fef19d9"
+                },
+                {
+                  "group": "left",
+                  "id": "f455188c-84c5-45ea-8d8f-ea9b4fa780d8"
+                }
+              ]
+            },
+            "id": "4a76edc3-ccf0-409d-bf5d-949391e5247a",
+            "data": {
+              "type": "tm.Process",
+              "name": "order food",
+              "description": "Action to order food from a restaurant",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": true,
+              "handlesCardPayment": false,
+              "handlesGoodsOrServices": false,
+              "isWebApplication": false,
+              "privilegeLevel": "",
+              "threats": [
+                {
+                  "id": "508852fa-b05d-48b6-b8ef-74d97a967587",
+                  "title": "Denial of Service",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Denial of service",
+                  "description": "See #5",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 18,
+                  "score": ""
+                },
+                {
+                  "id": "8638ddd2-166b-4093-b152-95e8f77a5d80",
+                  "title": "Ordering process replaced by scammer",
+                  "status": "Open",
+                  "severity": "TBD",
+                  "type": "Spoofing",
+                  "description": "The ordering page has been replaced by another malicious page users are redirected to from scam emails, or text messages, or links posted online.",
+                  "mitigation": "* buy similar domains with typos, e.g., ubreats.com\n* clearly identify logged in user to minimise chance of easy spoofing of web page\n",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 19,
+                  "score": ""
+                },
+                {
+                  "id": "45315808-aefe-4945-ab3c-a86999254ef8",
+                  "title": "Order process leaks data",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "The process could leak sensitive restaurant's data.",
+                  "mitigation": "* Ensure only order confirmation number is returned.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 20,
+                  "score": ""
+                },
+                {
+                  "id": "15621d19-63d6-4543-ac90-893aaff756c7",
+                  "title": "Process gets access to restricted resources",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Elevation of privilege",
+                  "description": "See #9",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 21,
+                  "score": ""
+                },
+                {
+                  "id": "bb27847b-3721-40a0-b752-1e87c7edfac8",
+                  "title": "Process has been tampered with",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #8",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 22,
+                  "score": ""
+                },
+                {
+                  "id": "ecbe1ed9-e129-4af5-99f5-d69f194af54f",
+                  "title": "Injection attack - tampering",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #29",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 31,
+                  "score": ""
+                },
+                {
+                  "id": "f3121812-c9db-4df1-b372-de25be11c0d9",
+                  "title": "Injection attack - disclosure",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "See #30",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 32,
+                  "score": ""
+                },
+                {
+                  "id": "6ee037d5-9521-44ff-8e09-f2b61b3c77d5",
+                  "title": "Session hijacking by cross-site scripting",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Spoofing",
+                  "description": "A bad actor intercepts a valid session cookie with malicious client-side code and reuses it (aka XSS).",
+                  "mitigation": "* http-only secured cookies\n* universally unique session ID (UUID) is generated from high-entropy server key\n* ensure consistent IP for whole process",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 53,
+                  "score": ""
+                },
+                {
+                  "id": "e44bc585-7e82-4fd2-870d-0b2b9c91f128",
+                  "title": "Cross-site request forgery",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Spoofing",
+                  "description": "A bad actor tricks a valid user to order food on a spoofed process that will be replicated to the real process (aka CSRF)",
+                  "mitigation": "* use unique high-entropy CSRF token passed in order form\n* use same-site flag for cookies",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 61,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "spoofing": 11,
+                "tampering": 2,
+                "repudiation": 0,
+                "informationDisclosure": 2,
+                "denialOfService": 1,
+                "elevationOfPrivilege": 1
+              }
+            },
+            "children": [
+              "a2530e08-532c-4f3b-8799-322085e50b7a"
+            ]
+          },
+          {
+            "position": {
+              "x": 655,
+              "y": 30
+            },
+            "size": {
+              "width": 120,
               "height": 60
             },
             "attrs": {
+              "text": {
+                "text": "user datastore"
+              },
+              "topLine": {
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              },
+              "bottomLine": {
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              }
+            },
+            "visible": true,
+            "shape": "store",
+            "zIndex": 4,
+            "ports": {
+              "groups": {
+                "top": {
+                  "position": "top",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "position": "right",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "bottom": {
+                  "position": "bottom",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "left": {
+                  "position": "left",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                }
+              },
+              "items": [
+                {
+                  "group": "top",
+                  "id": "418eae3b-7f1d-4d53-b5da-d35dd3266de5"
+                },
+                {
+                  "group": "right",
+                  "id": "9f257502-2342-41ed-a4c2-fe77fb5248a8"
+                },
+                {
+                  "group": "bottom",
+                  "id": "a3a2b30d-c358-4b0f-a81b-e723bb5def6e"
+                },
+                {
+                  "group": "left",
+                  "id": "446de78d-3f34-4f8c-bf89-655d6e31cacb"
+                }
+              ]
+            },
+            "id": "7d19df10-01f7-46fd-b2d2-a5b3f608125f",
+            "data": {
+              "type": "tm.Store",
+              "name": "user datastore",
+              "description": "Database that contains user PII using the Uber Eats service.",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isALog": false,
+              "isEncrypted": false,
+              "isSigned": false,
+              "storesCredentials": false,
+              "storesInventory": false,
+              "threats": [
+                {
+                  "id": "23e1c6a3-dd92-4ca7-9ba4-aafb033f136d",
+                  "title": "Exfiltrate data",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "An unregistered or unprivileged process or user tries to get access to the datastore.",
+                  "mitigation": "* Use strong credentials for database access stored in secured password vaults.\n* Credentials are passed at runtime from environment variables for most DB owners / users with least privilege principle.\n* Disable default DB user.\n* Separate between read and read/write permissions.\n* Monitor for unusual activity, e.g., bulk data accessed, unusual number of simultaneous requests or connections.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 10,
+                  "score": ""
+                },
+                {
+                  "id": "356b9d9d-182a-4604-b957-1cf9dd9f3181",
+                  "title": "DB is accessed and tampered with",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "A malicious actor or process tamper the datastore directly.",
+                  "mitigation": "* Allow full access to datastore to restricted set of personnel.\n* Store strong credentials in password vaults.\n* Monitor for and log all direct command line accesses to the datastore.\n* Keep regular backups in a separate location.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 11,
+                  "score": ""
+                },
+                {
+                  "id": "671d91b6-ae37-4f46-a712-ade0e88586af",
+                  "title": "DB is unreachable",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Denial of service",
+                  "description": "A malicious actor prevents the datastore to respond.",
+                  "mitigation": "* Monitor suspicious requests and disallow requests from abusing local IPs or ban abusing user.\n* Allow for replication and deployment with limited downtime when the load increases slightly.\n* Use a pool of connection with query timeouts to release resources fast even for unsuccessful queries.\n* Set a maximum number of connections allowed, with a queue.\n* Set a limit to the memory used by each query.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 12,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "repudiation": 0,
+                "informationDisclosure": 2,
+                "denialOfService": 2
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 655,
+              "y": 160
+            },
+            "size": {
+              "width": 120,
+              "height": 60
+            },
+            "attrs": {
+              "text": {
+                "text": "restaurant datastore"
+              },
+              "topLine": {
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              },
+              "bottomLine": {
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              }
+            },
+            "visible": true,
+            "shape": "store",
+            "zIndex": 5,
+            "ports": {
+              "groups": {
+                "top": {
+                  "position": "top",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "position": "right",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "bottom": {
+                  "position": "bottom",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "left": {
+                  "position": "left",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                }
+              },
+              "items": [
+                {
+                  "group": "top",
+                  "id": "418eae3b-7f1d-4d53-b5da-d35dd3266de5"
+                },
+                {
+                  "group": "right",
+                  "id": "9f257502-2342-41ed-a4c2-fe77fb5248a8"
+                },
+                {
+                  "group": "bottom",
+                  "id": "a3a2b30d-c358-4b0f-a81b-e723bb5def6e"
+                },
+                {
+                  "group": "left",
+                  "id": "446de78d-3f34-4f8c-bf89-655d6e31cacb"
+                }
+              ]
+            },
+            "id": "b72d26fe-a011-457b-aa22-193ea895afa7",
+            "data": {
+              "type": "tm.Store",
+              "name": "restaurant datastore",
+              "description": "Database holding PII data of restaurants registered at Uber Eats, including their menus.",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isALog": false,
+              "isEncrypted": false,
+              "isSigned": false,
+              "storesCredentials": false,
+              "storesInventory": false,
+              "threats": [
+                {
+                  "id": "08acb584-8118-4379-9ac1-a3bd1365869d",
+                  "title": "Exfiltrate data",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "See #10",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 14,
+                  "score": ""
+                },
+                {
+                  "id": "bd330b4f-0384-4549-9001-d1336256de71",
+                  "title": "DB is accessed and tampered with",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #11",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 15,
+                  "score": ""
+                },
+                {
+                  "id": "2e3194b9-8f16-4eb1-86f0-8218eaef0f6d",
+                  "title": "DB is unreachable",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Denial of service",
+                  "description": "See #12",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 16,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 2,
+                "repudiation": 0,
+                "informationDisclosure": 2,
+                "denialOfService": 1
+              }
+            }
+          },
+          {
+            "position": {
+              "x": 220,
+              "y": 340
+            },
+            "size": {
+              "width": 120,
+              "height": 60
+            },
+            "attrs": {
+              "text": {
+                "text": "driver"
+              },
               "body": {
                 "stroke": "#333333",
                 "strokeWidth": 1.5,
@@ -35,6 +1056,7 @@
             },
             "visible": true,
             "shape": "actor",
+            "zIndex": 6,
             "ports": {
               "groups": {
                 "top": {
@@ -101,46 +1123,202 @@
               "items": [
                 {
                   "group": "top",
-                  "id": "00bcf34a-8247-44d1-b59c-87d879b26a40"
+                  "id": "d7be6d6d-d2cb-49ed-a6c6-149867d8371c"
                 },
                 {
                   "group": "right",
-                  "id": "22f443d3-61b9-4f6b-8381-c25b0eb62e0f"
+                  "id": "39b5297e-6a5d-44c1-a2c6-87f274a3c1c6"
                 },
                 {
                   "group": "bottom",
-                  "id": "82817eea-8471-4865-b391-f3889f07aada"
+                  "id": "c02b0f91-c76e-43cb-8ae7-514e331a4354"
                 },
                 {
                   "group": "left",
-                  "id": "bb15cb17-0ae0-4791-829c-af66d0bf7af3"
+                  "id": "ba1b5493-0a35-45c6-a0c6-a417b91049c6"
                 }
               ]
             },
-            "id": "36ce14c7-6c46-4ac1-9b51-376947e46ff3",
-            "zIndex": 1,
+            "id": "19e1099f-65ed-403e-bc88-5c16f195d973",
             "data": {
               "type": "tm.Actor",
-              "name": "Actor",
-              "description": "",
-              "isTrustBoundary": false,
+              "name": "driver",
+              "description": "These are the delivery drivers carrying food orders from restaurants to end-users.",
               "outOfScope": false,
               "reasonOutOfScope": "",
               "hasOpenThreats": false,
               "providesAuthentication": false,
-              "threats": []
+              "threats": [
+                {
+                  "id": "73d67c85-0da8-465a-aff9-fa001a1bebb5",
+                  "title": "Weak credentials",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Spoofing",
+                  "description": "Credentials of driver can be stolen or guessed.",
+                  "mitigation": "* Enforce strong password rules such as 10 characters and at least one of capital letter, number, special character.\n* Request two factor authentication.\n* Request physical form of ID (e.g., official badges) when picking up orders.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 3,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "spoofing": 3,
+                "repudiation": 0
+              }
+            },
+            "children": [
+              "360f447c-aca3-4609-97ac-f8a58d070dfb"
+            ]
+          },
+          {
+            "position": {
+              "x": 543,
+              "y": 340
+            },
+            "size": {
+              "width": 112.5,
+              "height": 60
+            },
+            "attrs": {
+              "text": {
+                "text": "restaurant"
+              },
+              "body": {
+                "stroke": "#333333",
+                "strokeWidth": 1.5,
+                "strokeDasharray": null
+              }
+            },
+            "visible": true,
+            "shape": "actor",
+            "zIndex": 7,
+            "ports": {
+              "groups": {
+                "top": {
+                  "position": "top",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "right": {
+                  "position": "right",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "bottom": {
+                  "position": "bottom",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                },
+                "left": {
+                  "position": "left",
+                  "attrs": {
+                    "circle": {
+                      "r": 4,
+                      "magnet": true,
+                      "stroke": "#5F95FF",
+                      "strokeWidth": 1,
+                      "fill": "#fff",
+                      "style": {
+                        "visibility": "hidden"
+                      }
+                    }
+                  }
+                }
+              },
+              "items": [
+                {
+                  "group": "top",
+                  "id": "d7be6d6d-d2cb-49ed-a6c6-149867d8371c"
+                },
+                {
+                  "group": "right",
+                  "id": "39b5297e-6a5d-44c1-a2c6-87f274a3c1c6"
+                },
+                {
+                  "group": "bottom",
+                  "id": "c02b0f91-c76e-43cb-8ae7-514e331a4354"
+                },
+                {
+                  "group": "left",
+                  "id": "ba1b5493-0a35-45c6-a0c6-a417b91049c6"
+                }
+              ]
+            },
+            "id": "fdd4be50-70d9-4045-8587-1e7e3ed1a118",
+            "data": {
+              "type": "tm.Actor",
+              "name": "restaurant",
+              "description": "This is the restaurant preparing the food for end-users.",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "providesAuthentication": false,
+              "threats": [
+                {
+                  "id": "81c38088-7cb9-4b87-8fae-6ce4d9485766",
+                  "title": "Weak credentials",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Spoofing",
+                  "description": "Restaurant's credentials can be guessed or stolen",
+                  "mitigation": "* Enforce strong password rules such as 10 characters and at least one of capital letter, number, special character.\n* Request two factor authentication.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 4,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "spoofing": 2,
+                "repudiation": 0
+              }
             }
           },
           {
             "position": {
-              "x": 220,
-              "y": 110
+              "x": 80,
+              "y": 220
             },
             "size": {
-              "width": 60,
-              "height": 60
+              "width": 90,
+              "height": 80
             },
             "attrs": {
+              "text": {
+                "text": "location \nsharing"
+              },
               "body": {
                 "stroke": "#333333",
                 "strokeWidth": 1.5,
@@ -149,6 +1327,7 @@
             },
             "visible": true,
             "shape": "process",
+            "zIndex": 8,
             "ports": {
               "groups": {
                 "top": {
@@ -215,44 +1394,1223 @@
               "items": [
                 {
                   "group": "top",
-                  "id": "53891051-ae43-4aba-ab60-65dfb9b3570e"
+                  "id": "4abc8749-2a6c-433d-af3f-e6ade0b3aefb"
                 },
                 {
                   "group": "right",
-                  "id": "485253a1-9a11-4590-94e7-2d969c203634"
+                  "id": "2d878004-5e9a-4646-bb09-fda07dfcc877"
                 },
                 {
                   "group": "bottom",
-                  "id": "cee26c13-ce82-4b90-9bb9-9edda81a4811"
+                  "id": "23e19224-afed-43d4-9bc4-7a404fef19d9"
                 },
                 {
                   "group": "left",
-                  "id": "5906270c-43b6-4242-846d-acd3e617ac4d"
+                  "id": "f455188c-84c5-45ea-8d8f-ea9b4fa780d8"
                 }
               ]
             },
-            "id": "64d84d02-22dd-4252-b791-dc6c9fa250a7",
-            "zIndex": 2,
+            "id": "3c5d77f4-6791-43ea-bda1-96aee57453e4",
             "data": {
               "type": "tm.Process",
-              "name": "Process",
-              "description": "",
+              "name": "location \nsharing",
+              "description": "This process handles the real-time sharing of driver's location",
               "outOfScope": false,
-              "isTrustBoundary": false,
               "reasonOutOfScope": "",
               "hasOpenThreats": false,
               "handlesCardPayment": false,
               "handlesGoodsOrServices": false,
               "isWebApplication": false,
               "privilegeLevel": "",
-              "threats": []
+              "threats": [
+                {
+                  "id": "52e25b6f-3670-4d3d-9712-3e277d929eea",
+                  "title": "Denial of Service",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Denial of service",
+                  "description": "See #5",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 51,
+                  "score": ""
+                },
+                {
+                  "id": "38ce8096-3955-41ec-92af-606c8a97a187",
+                  "title": "Location service leaks data",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "Location service could leak private data from other end-users when tracking orders",
+                  "mitigation": "* ensure no PII are logged\n* ensure no third party PII can be seen when dealing with multiple order\n* ensure addresses of past orders are cleared when delivery is confirmed",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 52,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "spoofing": 0,
+                "tampering": 0,
+                "repudiation": 0,
+                "informationDisclosure": 2,
+                "denialOfService": 2,
+                "elevationOfPrivilege": 0
+              }
             }
+          },
+          {
+            "shape": "trust-boundary-curve",
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Boundary",
+              "name": "uber-eats infrastructure",
+              "description": "",
+              "isTrustBoundary": true,
+              "hasOpenThreats": false
+            },
+            "labels": [
+              "uber-eats infrastructure"
+            ],
+            "id": "92e72416-758c-4ab3-bfc3-4fd13078cb20",
+            "source": {
+              "x": 360,
+              "y": 20
+            },
+            "target": {
+              "x": 830,
+              "y": 270
+            },
+            "vertices": [
+              {
+                "x": 360,
+                "y": 260
+              },
+              {
+                "x": 450,
+                "y": 330
+              },
+              {
+                "x": 590,
+                "y": 270
+              }
+            ]
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "driver_id",
+              "description": "Driver ID is passed to the location sharing process for the end-user to track their order.",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [
+                {
+                  "id": "944a2ad8-7212-4347-bfe3-7afe44a573bc",
+                  "title": "Data tampered with in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #23",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 47,
+                  "score": ""
+                },
+                {
+                  "id": "c59ee094-f298-4f9b-978b-45cde92dc99c",
+                  "title": "PII data accessed in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "See #24",
+                  "mitigation": "* additionally to #24, ensure no PII of driver is sent other than their ID.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 48,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "informationDisclosure": 1,
+                "denialOfService": 0
+              }
+            },
+            "labels": [
+              "driver_id"
+            ],
+            "id": "bb34d213-b4d6-4948-b9db-b9504860b1dd",
+            "source": {
+              "cell": "19e1099f-65ed-403e-bc88-5c16f195d973",
+              "port": "ba1b5493-0a35-45c6-a0c6-a417b91049c6"
+            },
+            "target": {
+              "cell": "3c5d77f4-6791-43ea-bda1-96aee57453e4",
+              "port": "23e19224-afed-43d4-9bc4-7a404fef19d9"
+            },
+            "vertices": [
+              {
+                "x": 195,
+                "y": 340
+              }
+            ]
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "delivery_notification",
+              "description": "Notification of delivery with driver details. Should include:\n* driver first name\n* driver plate number\n* driver vehicle make and model",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [
+                {
+                  "id": "82d941cd-4329-4e02-8ccd-8aa75cfa783c",
+                  "title": "Data tampered with in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #23",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 37,
+                  "score": ""
+                },
+                {
+                  "id": "7ada5cc6-fee3-41d1-80f9-136aa5dc3bbd",
+                  "title": "PII data accessed in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "See #24",
+                  "mitigation": "* additionally to #24, ensure only necessary data is returned to confirm the delivery.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 38,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "informationDisclosure": 1,
+                "denialOfService": 0
+              }
+            },
+            "labels": [
+              "delivery_notification"
+            ],
+            "id": "aa17cdb7-9746-40f4-a0b5-beb7483fa3de",
+            "source": {
+              "cell": "4a76edc3-ccf0-409d-bf5d-949391e5247a",
+              "port": "f455188c-84c5-45ea-8d8f-ea9b4fa780d8"
+            },
+            "target": {
+              "cell": "00c473a5-dde0-41fe-8e56-967bba7b1687",
+              "port": "c02b0f91-c76e-43cb-8ae7-514e331a4354"
+            },
+            "vertices": [
+              {
+                "x": 310,
+                "y": 220
+              },
+              {
+                "x": 270,
+                "y": 220
+              }
+            ]
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "order data",
+              "description": "selected menu item and name of end-user",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [
+                {
+                  "id": "51a4cba3-6281-463e-80a5-fcd720ee1cb7",
+                  "title": "Data tampered with in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #23",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 39,
+                  "score": ""
+                },
+                {
+                  "id": "396dacd6-ed73-4f86-9faf-95f60d035a22",
+                  "title": "PII data accessed in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "See #24",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 40,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "informationDisclosure": 1,
+                "denialOfService": 0
+              }
+            },
+            "labels": [
+              "order data"
+            ],
+            "id": "ceb1b37f-5cad-486a-8381-9973e70652a8",
+            "source": {
+              "cell": "4a76edc3-ccf0-409d-bf5d-949391e5247a",
+              "port": "23e19224-afed-43d4-9bc4-7a404fef19d9"
+            },
+            "target": {
+              "cell": "fdd4be50-70d9-4045-8587-1e7e3ed1a118",
+              "port": "d7be6d6d-d2cb-49ed-a6c6-149867d8371c"
+            },
+            "vertices": [
+              {
+                "x": 490,
+                "y": 230
+              },
+              {
+                "x": 599,
+                "y": 260
+              }
+            ]
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "order confirmation",
+              "description": "message confirming the order, with a unique order ID",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [
+                {
+                  "id": "691eb628-375c-4380-99b5-9a50e7e3ae81",
+                  "title": "Data tampered with in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #23",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 35,
+                  "score": ""
+                },
+                {
+                  "id": "2b3f6858-565f-4409-9722-dc4bbfd02c02",
+                  "title": "PII data accessed in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "See #24",
+                  "mitigation": "* additionally to #24, ensure only necessary data is returned to confirm the order.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 36,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "informationDisclosure": 1,
+                "denialOfService": 0
+              }
+            },
+            "labels": [
+              "order confirmation"
+            ],
+            "id": "c7710159-d036-41fb-b0d7-2d9d66210b3a",
+            "source": {
+              "cell": "4a76edc3-ccf0-409d-bf5d-949391e5247a",
+              "port": "f455188c-84c5-45ea-8d8f-ea9b4fa780d8"
+            },
+            "target": {
+              "cell": "00c473a5-dde0-41fe-8e56-967bba7b1687",
+              "port": "39b5297e-6a5d-44c1-a2c6-87f274a3c1c6"
+            },
+            "vertices": [
+              {
+                "x": 290,
+                "y": 190
+              }
+            ]
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "delivery data",
+              "description": "Delivery data contains the name of the end-user, their address, and the order number",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [
+                {
+                  "id": "6c3350de-650b-4d5d-b033-3edd0cf7e890",
+                  "title": "Data tampered with in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #23",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 43,
+                  "score": ""
+                },
+                {
+                  "id": "ed8e6440-bfce-4303-80ca-a2bf04c31e49",
+                  "title": "PII data accessed in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "See #24",
+                  "mitigation": "* additionally to #24, ensure no PII other than firstname + address of end-user, address of restaurant, and order number are returned to set up the delivery.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 44,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "informationDisclosure": 1,
+                "denialOfService": 0
+              }
+            },
+            "labels": [
+              "delivery data"
+            ],
+            "id": "af786692-d37a-44d8-80c9-3f0af8b91ca2",
+            "source": {
+              "cell": "4a76edc3-ccf0-409d-bf5d-949391e5247a",
+              "port": "f455188c-84c5-45ea-8d8f-ea9b4fa780d8"
+            },
+            "target": {
+              "cell": "19e1099f-65ed-403e-bc88-5c16f195d973",
+              "port": "d7be6d6d-d2cb-49ed-a6c6-149867d8371c"
+            },
+            "vertices": [
+              {
+                "x": 350,
+                "y": 290
+              },
+              {
+                "x": 320,
+                "y": 320
+              }
+            ]
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "order confirmation",
+              "description": "message confirming the order, with a unique order ID",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [
+                {
+                  "id": "839dc52a-11de-47aa-9070-b5c12140a93d",
+                  "title": "Data tampered with in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #23",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 41,
+                  "score": ""
+                },
+                {
+                  "id": "f9c5271b-d108-4b24-abf8-89263ab0da00",
+                  "title": "PII data accessed in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "See #24",
+                  "mitigation": "* additionally to #24, ensure only necessary data is returned to confirm the order.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 42,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "informationDisclosure": 2,
+                "denialOfService": 0
+              }
+            },
+            "labels": [
+              "order confirmation"
+            ],
+            "id": "9021dfef-fb75-4e40-825d-5a2726972af3",
+            "source": {
+              "cell": "fdd4be50-70d9-4045-8587-1e7e3ed1a118",
+              "port": "d7be6d6d-d2cb-49ed-a6c6-149867d8371c"
+            },
+            "target": {
+              "cell": "4a76edc3-ccf0-409d-bf5d-949391e5247a",
+              "port": "23e19224-afed-43d4-9bc4-7a404fef19d9"
+            },
+            "vertices": [
+              {
+                "x": 500,
+                "y": 290
+              }
+            ]
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "picking up confirmation",
+              "description": "confirmation message with unique delivery ID for driver",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [
+                {
+                  "id": "a6e53ad1-6fac-4a0a-85eb-5ad66f6dc154",
+                  "title": "Data tampered with in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #23",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 45,
+                  "score": ""
+                },
+                {
+                  "id": "d3dc4c9e-86ee-48ff-acdb-ccfb103b3cf0",
+                  "title": "PII data accessed in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "See #24",
+                  "mitigation": "* additionally to #24, ensure no PII of driver is returned to confirm the delivery apart from their ID.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 46,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "informationDisclosure": 1,
+                "denialOfService": 0
+              }
+            },
+            "labels": [
+              "picking up confirmation"
+            ],
+            "id": "01988782-0708-4686-9608-dd71c8cd0beb",
+            "source": {
+              "cell": "19e1099f-65ed-403e-bc88-5c16f195d973",
+              "port": "d7be6d6d-d2cb-49ed-a6c6-149867d8371c"
+            },
+            "target": {
+              "cell": "4a76edc3-ccf0-409d-bf5d-949391e5247a",
+              "port": "f455188c-84c5-45ea-8d8f-ea9b4fa780d8"
+            },
+            "vertices": [
+              {
+                "x": 310,
+                "y": 260
+              },
+              {
+                "x": 330,
+                "y": 240
+              },
+              {
+                "x": 360,
+                "y": 220
+              }
+            ]
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "GPS_coordinates",
+              "description": "GPS coordinates are sent to be shown on tracking map of end-user.",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [
+                {
+                  "id": "4a620f5a-9beb-46f0-89f6-582542694e11",
+                  "title": "Data tampered with in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #23",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 49,
+                  "score": ""
+                },
+                {
+                  "id": "d48dfbc6-0c39-4a28-a75b-da6be2e79d43",
+                  "title": "PII data accessed in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "See #24",
+                  "mitigation": "Additionally to #24:\n* ensure no PII of driver is sent other than their ID.\n* ensure tracking data are disposed of as soon as delivery is done.\n* ensure tracking data are hidden when driver is making multiple deliveries, so address of other users are not visible.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 50,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "informationDisclosure": 1,
+                "denialOfService": 0
+              }
+            },
+            "labels": [
+              "GPS_coordinates"
+            ],
+            "id": "1ce3006b-9ca7-4dac-a05e-520b40279d90",
+            "source": {
+              "x": 120,
+              "y": 220
+            },
+            "target": {
+              "cell": "00c473a5-dde0-41fe-8e56-967bba7b1687",
+              "port": "c02b0f91-c76e-43cb-8ae7-514e331a4354"
+            },
+            "vertices": []
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "register_data",
+              "description": "PII as described in personal_details flow, and a unique user ID.",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [
+                {
+                  "id": "cb21fb06-6be5-4717-8e76-0f7f8bcaea13",
+                  "title": "Wrong or malicious data",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "Data is tampered with in transit to inject malicious data",
+                  "mitigation": "* Use local private network.\n* Use certificates to authenticate originating machine.\n* Use prepared statements on the caller side to minimise chances of effects of tampered data.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 54,
+                  "score": ""
+                },
+                {
+                  "id": "f89b1a69-dcd6-4ba0-8e73-b7b84f394777",
+                  "title": "Data is read in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "A bad actor captures the data in transit",
+                  "mitigation": "* use a secure private network",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 55,
+                  "score": ""
+                },
+                {
+                  "id": "39b5a6b7-4550-439d-95e9-6392956473d7",
+                  "title": "Wire is overloaded by requests",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Denial of service",
+                  "description": "The wire is overloaded by requests in the private network.",
+                  "mitigation": "* monitor network activity for suspicious patterns, e.g., corrupted processes\n* drop suspicious packets and ban originating IPs (local firewalling)",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 56,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "informationDisclosure": 1,
+                "denialOfService": 3
+              }
+            },
+            "labels": [
+              "register_data"
+            ],
+            "id": "f1b8dd5f-68e9-497d-b9a7-41ce9a1cba7d",
+            "source": {
+              "cell": "0713e26f-9476-45b2-b4cf-63ea2e032192",
+              "port": "2d878004-5e9a-4646-bb09-fda07dfcc877"
+            },
+            "target": {
+              "cell": "7d19df10-01f7-46fd-b2d2-a5b3f608125f",
+              "port": "446de78d-3f34-4f8c-bf89-655d6e31cacb"
+            },
+            "vertices": [
+              {
+                "x": 590,
+                "y": 60
+              }
+            ]
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "user_id",
+              "description": "confirmation of registration, with a user ID (unique)",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [
+                {
+                  "id": "0e841ca2-a4c4-496d-9964-1687d8ceb73d",
+                  "title": "Data tampered with in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #23",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 26,
+                  "score": ""
+                },
+                {
+                  "id": "c00f33d0-73a6-4452-9245-0f9667f9be67",
+                  "title": "PII data accessed in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "See #24",
+                  "mitigation": "* additionally to #24, ensure only necessary data is returned to confirm the registration.",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 27,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "informationDisclosure": 2,
+                "denialOfService": 0
+              }
+            },
+            "labels": [
+              "user_id"
+            ],
+            "id": "2302ea3a-c9c4-440b-b626-e6cc709ab042",
+            "source": {
+              "cell": "0713e26f-9476-45b2-b4cf-63ea2e032192",
+              "port": "f455188c-84c5-45ea-8d8f-ea9b4fa780d8"
+            },
+            "target": {
+              "cell": "00c473a5-dde0-41fe-8e56-967bba7b1687",
+              "port": "d7be6d6d-d2cb-49ed-a6c6-149867d8371c"
+            },
+            "vertices": [
+              {
+                "x": 320,
+                "y": 60
+              },
+              {
+                "x": 210,
+                "y": 60
+              }
+            ]
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "personal_details",
+              "description": "PII to register to Uber eats' service:   \n  * full name\n  * address\n  * mobile phone number\n  * email address\n  * password\n  * bank details",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [
+                {
+                  "id": "4429f6a8-800d-4416-a303-617fa9ac9f2c",
+                  "title": "Data tampered with in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "Data can be tampered with while being in transit.",
+                  "mitigation": "Use secure channel with strong encryption, e.g., TLS 1.2 at least (1.3 preferred).",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 23,
+                  "score": ""
+                },
+                {
+                  "id": "012e61b9-1704-4350-94d2-d5f65451d341",
+                  "title": "PII data accessed in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "The data can be read in transit.",
+                  "mitigation": "* Use end-to-end encryption, TLS1.2 minimum (1.3 preferred).\n* Ensure cookies are passed securely (secure cookie flag set to true).",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 24,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "informationDisclosure": 1,
+                "denialOfService": 0
+              }
+            },
+            "labels": [
+              "personal_details"
+            ],
+            "id": "4e4f06a7-c859-4f94-b716-475a96d361a3",
+            "source": {
+              "cell": "00c473a5-dde0-41fe-8e56-967bba7b1687",
+              "port": "39b5297e-6a5d-44c1-a2c6-87f274a3c1c6"
+            },
+            "target": {
+              "cell": "0713e26f-9476-45b2-b4cf-63ea2e032192",
+              "port": "f455188c-84c5-45ea-8d8f-ea9b4fa780d8"
+            },
+            "vertices": [
+              {
+                "x": 310,
+                "y": 100
+              },
+              {
+                "x": 390,
+                "y": 100
+              }
+            ]
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": "block"
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "order_data",
+              "description": "Same as order_data flow (end-user -- order food)",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": true,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [
+                {
+                  "id": "bee05e83-60e1-43b8-8080-0e9df2b6e4f9",
+                  "title": "Wrong or malicious data",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #54",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 57,
+                  "score": ""
+                },
+                {
+                  "id": "dd149e4d-2ed5-4c12-98d6-3048305f4142",
+                  "title": "Data is read in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "See #55",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 58,
+                  "score": ""
+                },
+                {
+                  "id": "7d7c61dc-476d-4113-8d82-b76aef46f0f8",
+                  "title": "Wire is overloaded by requests",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Denial of service",
+                  "description": "See #56",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 59,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "informationDisclosure": 1,
+                "denialOfService": 2
+              }
+            },
+            "labels": [
+              "order_data"
+            ],
+            "id": "73cd1551-e896-403b-8b8c-b0497ffa20d8",
+            "source": {
+              "cell": "b72d26fe-a011-457b-aa22-193ea895afa7",
+              "port": "446de78d-3f34-4f8c-bf89-655d6e31cacb"
+            },
+            "target": {
+              "cell": "4a76edc3-ccf0-409d-bf5d-949391e5247a",
+              "port": "2d878004-5e9a-4646-bb09-fda07dfcc877"
+            },
+            "vertices": []
+          },
+          {
+            "shape": "flow",
+            "attrs": {
+              "line": {
+                "stroke": "#333333",
+                "targetMarker": {
+                  "name": "block"
+                },
+                "sourceMarker": {
+                  "name": ""
+                },
+                "strokeDasharray": null
+              }
+            },
+            "width": 200,
+            "height": 100,
+            "zIndex": 10,
+            "connector": "smooth",
+            "data": {
+              "type": "tm.Flow",
+              "name": "order data",
+              "description": "Contains the user ID, the selected menu item, and a confirmation of address for the delivery.",
+              "outOfScope": false,
+              "reasonOutOfScope": "",
+              "hasOpenThreats": false,
+              "isBidirectional": false,
+              "isEncrypted": false,
+              "isPublicNetwork": false,
+              "protocol": "",
+              "threats": [
+                {
+                  "id": "34ff1e90-0d17-49ec-a337-2d40949fa3ec",
+                  "title": "Data tampered with in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Tampering",
+                  "description": "See #23",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 33,
+                  "score": ""
+                },
+                {
+                  "id": "2bafcc19-820f-41d1-a0d9-398f768ba5c2",
+                  "title": "PII data accessed in transit",
+                  "status": "Mitigated",
+                  "severity": "TBD",
+                  "type": "Information disclosure",
+                  "description": "See #24",
+                  "mitigation": "",
+                  "modelType": "STRIDE",
+                  "new": false,
+                  "number": 34,
+                  "score": ""
+                }
+              ],
+              "threatFrequency": {
+                "tampering": 1,
+                "informationDisclosure": 3,
+                "denialOfService": 0
+              }
+            },
+            "labels": [
+              "order data"
+            ],
+            "id": "4acbd23f-3d51-45fe-a6d4-d73c1a8d78f8",
+            "source": {
+              "cell": "00c473a5-dde0-41fe-8e56-967bba7b1687",
+              "port": "39b5297e-6a5d-44c1-a2c6-87f274a3c1c6"
+            },
+            "target": {
+              "cell": "4a76edc3-ccf0-409d-bf5d-949391e5247a",
+              "port": "f455188c-84c5-45ea-8d8f-ea9b4fa780d8"
+            },
+            "vertices": []
           }
-        ]
+        ],
+        "description": "end-user_partial"
       }
     ],
     "diagramTop": 2,
     "reviewer": "",
-    "threatTop": 0
+    "threatTop": 63
   }
 }
